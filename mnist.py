@@ -1,5 +1,5 @@
 # Adopted and modified from TensorFlow's MNIST example.
-# https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/tutorials/mnist
+# https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/tutorials/mnist/fully_connected_feed.py
 #
 # In this example, we will build a simple neural network with 2 fully connected layers.
 # We will then integrate MissingLink SDK in order to remotely monitor our training, validation
@@ -14,7 +14,7 @@ import argparse
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-from missinglink import TensorFlowCallbackV2
+from missinglink import TensorFlowProject
 
 # Input params
 NUM_CLASSES = 10  # The MNIST dataset has 10 classes, representing the digits 0 through 9.
@@ -31,9 +31,8 @@ MAX_STEPS = 2000
 BATCH_SIZE = 100
 EPOCH_SIZE = 500  # Number of iterations per epoch
 
-# Logging params
+# Directory for saving input
 INPUT_DATA_DIR = os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/input_data')
-LOG_DIR = os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/logs/fully_connected_feed')
 
 # MissingLink credential
 OWNER_ID = None
@@ -120,79 +119,49 @@ def run_training():
         correct = tf.nn.in_top_k(logits, labels_placeholder, 1)
         eval_correct = tf.reduce_sum(tf.cast(correct, tf.int32))
 
-        # Build the summary Tensor
-        tf.summary.scalar('loss', loss)
-        summary = tf.summary.merge_all()
-
         # Initialize the graph
         init = tf.global_variables_initializer()
         session = tf.Session()
         session.run(init)
 
-        # Initialize objects to save checkpoints and write events for TensorBoard
-        saver = tf.train.Saver()
-        summary_writer = tf.summary.FileWriter(LOG_DIR, session.graph)
+        # Now that our neural net is ready, let's integrate MissingLinkAI SDK and start the training!
 
-        # Now that our neural net is ready, let's integrate MissingLink SDK and start the training!
+        # Create a project manager with credentials to communicate with MissingLinkAI's backend
+        project = TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
-        # Create a callback with credentials to communicate with MissingLink's backend
-        callback = TensorFlowCallbackV2(owner_id=OWNER_ID, project_token=PROJECT_TOKEN)
-
-        # Create an experiment as a context manager so MissingLink can monitor the
+        # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
-        with callback.create_experiment(
+        with project.create_experiment(
                 display_name='MNIST multilayer perception',
                 description='Two fully connected hidden layers',
-                optimizer=optimizer) as experiment:
+                optimizer=optimizer,
+                hyperparams={'batch_size': BATCH_SIZE},
+                monitored={'loss': loss, 'acc': eval_correct}) as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
             # - The index `step`, produced by `experiment.loop`, is 0-based.
-            # - When `epoch_size` is provided, we'll monitor and display metric-vs-epoch graphs on your dashboard.
+            # - When `epoch_size` is provided, we'll monitor and display metric-vs-epoch graphs on your dashboard
+            #   besides the default metric-vs-iteration graphs.
             for step in experiment.loop(max_iterations=MAX_STEPS, epoch_size=EPOCH_SIZE):
 
                 feed_dict = fill_feed_dict(data_sets.train, images_placeholder, labels_placeholder)
 
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
-                with experiment.train(monitored={'loss': loss, 'acc': eval_correct},
-                                      custom_metrics={'iteration': lambda: step}):
-                    # Notice that you only need to provide the optimizer op. The SDK will automatically run the metric
-                    # tensors provided in the `experiment.train` scope. If you need these values, you should supply the
-                    # corresponding tensors to this `session.run` as you would normally do.
-                    _ = session.run(train_op, feed_dict=feed_dict)
+                with experiment.train(custom_metrics={'iteration': lambda: step}):
+                    # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
+                    # tensors provided in the `experiment.train` context (and `experiment` context).
+                    _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
 
-                # Write the summaries for TensorBoard
-                if step % 100 == 0:
-                    summary_str = session.run(summary, feed_dict=feed_dict)
-                    summary_writer.add_summary(summary_str, step)
-                    summary_writer.flush()
-
-                # Save a checkpoint and evaluate the model periodically.
-                if (step + 1) % 1000 == 0 or (step + 1) == MAX_STEPS:
-                    checkpoint_file = os.path.join(LOG_DIR, 'model.ckpt')
-                    saver.save(session, checkpoint_file, global_step=step)
+                # Validate the model with the validation dataset
+                if (step + 1) % EPOCH_SIZE == 0 or (step + 1) == MAX_STEPS:
+                    with experiment.validation():
+                        do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
                     
-                    # Evaluate against the validation set.
-                    print('Validation Data Eval:')
-                    do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
-                    
-                    # Evaluate against the training set.
-                    print('Training Data Eval:')
-                    do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.train)
-                
-                    # Evaluate against the test set.
-                    print('Test Data Eval:')
-                    do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
-
 
 if __name__ == '__main__':
-    if tf.gfile.Exists(LOG_DIR):
-        # Clean up the directory for logging if it's already existed
-        tf.gfile.DeleteRecursively(LOG_DIR)
-        tf.gfile.MakeDirs(LOG_DIR)
-
-    # Provide an alternative to provide MissingLink credential
+    # Provide an alternative to provide MissingLinkAI credential
     parser = argparse.ArgumentParser()
     parser.add_argument('--owner-id')
     parser.add_argument('--project-token')
