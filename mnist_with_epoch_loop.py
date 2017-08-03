@@ -129,6 +129,8 @@ def run_training():
         # Create a callback with credentials to communicate with MissingLink's backend
         project = TensorFlowProject(owner_id=OWNER_ID, project_token=PROJECT_TOKEN, host=HOST)
 
+        mapping = {i: str(i) for i in range(10)}
+        project.set_properties(class_mapping=mapping)
         # Create an experiment as a context manager so MissingLink can monitor the
         # progress of the experiment.
         with project.create_experiment(
@@ -158,6 +160,9 @@ def run_training():
                 # Validate the model with the validation dataset
                 with experiment.validation():
                     do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+            with experiment.test(data_sets.test.num_examples // BATCH_SIZE,
+                                 monitored={"expected": labels_placeholder, "predicted": logits}):
+                do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
 
 
 if __name__ == '__main__':
