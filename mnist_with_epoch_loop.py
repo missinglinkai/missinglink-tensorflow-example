@@ -135,7 +135,7 @@ def run_training():
                 display_name='MNIST multilayer perception',
                 description='Two fully connected hidden layers',
                 optimizer=optimizer,
-                monitored={'loss': loss, 'acc': eval_correct}) as experiment:
+                monitored_metrics={'loss': loss, 'acc': eval_correct}) as experiment:
 
             total_batches = int(data_sets.train.num_examples / BATCH_SIZE)
 
