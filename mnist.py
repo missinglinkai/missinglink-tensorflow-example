@@ -136,7 +136,7 @@ def run_training():
                 description='Two fully connected hidden layers',
                 optimizer=optimizer,
                 hyperparams={'batch_size': BATCH_SIZE},
-                monitored={'loss': loss, 'acc': eval_correct}) as experiment:
+                monitored_metrics={'loss': loss, 'acc': eval_correct}) as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
