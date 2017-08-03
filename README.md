@@ -1,4 +1,4 @@
-# MissingLink SDK example for TensorFlow
+# MissingLinkAI SDK example for TensorFlow
 
 ## Requirements
 
@@ -23,12 +23,20 @@ pip install -r requirements.txt
 
 ## Run
 
-In order to run an experiment with MissingLink, you would need to first create a 
-project and obtain the credentials on the MissingLink's web dashbash.
+In order to run an experiment with MissingLinkAI, you would need to first create a 
+project and obtain the credentials on the MissingLinkAI's web dashbash.
 
 With the `owner_id` and `project_token`, you can run this example from terminal.
 ```bash
-python mnist --owner_id 'owner_id' --project_token 'project_token'
+python mnist.py --owner_id 'owner_id' --project_token 'project_token'
+python mnist_with_epoch_loop.py --owner_id 'owner_id' --project_token 'project_token'
 ```
 
-Alternatively, you can copy these credentials and set them in `mnist.py`.
+Alternatively, you can copy these credentials and set them in source files.
+
+## Examples
+
+These examples train classification models for MNIST dataset.
+
+- [mnist.py](https://github.com/missinglinkai/missinglink-tensorflow-example/blob/master/mnist.py): training with iterations/steps using single loop.
+- [mnist_with_epoch_loop.py](https://github.com/missinglinkai/missinglink-tensorflow-example/blob/master/mnist_with_epoch_loop.py): training with epochs and batches using nested loops.
