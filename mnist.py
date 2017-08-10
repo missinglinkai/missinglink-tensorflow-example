@@ -158,6 +158,9 @@ def run_training():
                 if (step + 1) % EPOCH_SIZE == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation():
                         do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+            total_test_iterations = data_sets.test.num_examples // BATCH_SIZE
+            with experiment.test(total_test_iterations, labels_placeholder, logits):
+                do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
                     
 
 if __name__ == '__main__':

@@ -160,8 +160,8 @@ def run_training():
                 # Validate the model with the validation dataset
                 with experiment.validation():
                     do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
-            with experiment.test(data_sets.test.num_examples // BATCH_SIZE,
-                                 monitored={"expected": labels_placeholder, "predicted": logits}):
+            total_test_iterations = data_sets.test.num_examples // BATCH_SIZE
+            with experiment.test(total_test_iterations, labels_placeholder, logits):
                 do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
 
 
