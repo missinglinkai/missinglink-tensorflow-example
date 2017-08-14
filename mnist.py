@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 import argparse
+import time
 
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
@@ -132,7 +133,7 @@ def run_training():
         # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
         with project.create_experiment(
-                display_name='MNIST multilayer perception',
+                display_name='MLP',
                 description='Two fully connected hidden layers',
                 optimizer=optimizer,
                 hyperparams={'batch_size': BATCH_SIZE},
@@ -158,6 +159,7 @@ def run_training():
                 if (step + 1) % EPOCH_SIZE == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation():
                         do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+                time.sleep(0.05)
             total_test_iterations = data_sets.test.num_examples // BATCH_SIZE
             with experiment.test(total_test_iterations, labels_placeholder, logits):
                 do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)

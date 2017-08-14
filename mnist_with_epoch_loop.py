@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import math
 import argparse
+import time
 
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
@@ -127,14 +128,14 @@ def run_training():
         # Now that our neural net is ready, let's integrate MissingLink SDK and start the training!
 
         # Create a callback with credentials to communicate with MissingLink's backend
-        project = TensorFlowProject(owner_id=OWNER_ID, project_token=PROJECT_TOKEN, host=HOST)
+        project = TensorFlowProject(owner_id=OWNER_ID, project_token=PROJECT_TOKEN)
 
         mapping = {i: str(i) for i in range(10)}
         project.set_properties(class_mapping=mapping)
         # Create an experiment as a context manager so MissingLink can monitor the
         # progress of the experiment.
         with project.create_experiment(
-                display_name='MNIST multilayer perception',
+                display_name='MNIST multilayer perceptron',
                 description='Two fully connected hidden layers',
                 optimizer=optimizer,
                 monitored_metrics={'loss': loss, 'acc': eval_correct}) as experiment:
@@ -156,6 +157,7 @@ def run_training():
                         # the metric tensors provided in the `experiment.train` scope. If you need these values,
                         # you should supply the corresponding tensors to this `session.run` as you would normally do.
                         _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
+                    time.sleep(0.05)
 
                 # Validate the model with the validation dataset
                 with experiment.validation():
