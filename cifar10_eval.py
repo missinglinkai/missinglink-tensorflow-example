@@ -95,7 +95,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
         coord.join(threads, stop_grace_period_secs=10)
 
 
-def evaluate(test=False):
+def evaluate(experiment, test=False):
     """Eval CIFAR-10 for a number of steps."""
     with tf.Graph().as_default() as g:
         # Get images and labels for CIFAR-10.

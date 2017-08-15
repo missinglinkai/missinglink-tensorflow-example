@@ -31,38 +31,139 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from datetime import datetime
-import time
-
 import tensorflow as tf
 from missinglink import TensorFlowProject
 
-import cifar10
 import cifar10_input
-from cifar10_eval import evaluate
+from datetime import datetime
+import math
+import time
+
+import cifar10
 
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 1000000,
+tf.app.flags.DEFINE_integer('max_steps', 50,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 tf.app.flags.DEFINE_integer('log_frequency', 10,
                             """How often to log results to the console.""")
 
+tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
+                           """Directory where to write event logs.""")
+tf.app.flags.DEFINE_string('eval_data', 'test',
+                           """Either 'test' or 'train_eval'.""")
+tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
+                           """Directory where to read model checkpoints.""")
+tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
+                            """How often to run the eval.""")
+tf.app.flags.DEFINE_integer('num_examples', 10000,
+                            """Number of examples to run.""")
+tf.app.flags.DEFINE_boolean('run_once', False,
+                            """Whether to run eval only once.""")
+
 OWNER_ID = "e845d408-8b56-9d49-b1b3-782faf151a16"
 PROJECT_TOKEN = "dfeNFltpcvkjcexA"
 
+PROJECT = TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
+
+
+def eval_once(saver, summary_writer, top_k_op, summary_op, labels, logits, experiment, is_test=False):
+    """Run Eval once.
+    Args:
+      saver: Saver.
+      summary_writer: Summary writer.
+      top_k_op: Top K op.
+      summary_op: Summary op.
+    """
+    with tf.Session() as sess:
+        ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            # Restores from checkpoint
+            saver.restore(sess, ckpt.model_checkpoint_path)
+            # Assuming model_checkpoint_path looks something like:
+            #   /my-favorite-path/cifar10_train/model.ckpt-0,
+            # extract global_step from it.
+            global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+        else:
+            print('No checkpoint file found')
+            return
+
+        # Start the queue runners.
+        coord = tf.train.Coordinator()
+        try:
+            threads = []
+            for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+                threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
+                                                 start=True))
+
+            num_iter = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
+            step = 0
+            if is_test:
+                with experiment.test(num_iter, labels, logits):
+                    while step < num_iter and not coord.should_stop():
+                        predictions = sess.run([top_k_op])
+                        step += 1
+            else:
+                with experiment.validation(monitored_metrics={"in_top_k": top_k_op}):
+                    while step < num_iter and not coord.should_stop():
+                        predictions = sess.run([top_k_op])
+                        step += 1
+
+            true_count = predictions[0]
+            # Compute precision @ 1.
+            print('%s: precision @ 1 = %s' % (datetime.now(), true_count))
+
+
+            summary = tf.Summary()
+            summary.ParseFromString(sess.run(summary_op))
+            summary.value.add(tag='Precision @ 1', simple_value=true_count)
+            summary_writer.add_summary(summary, global_step)
+        except Exception as e:  # pylint: disable=broad-except
+            coord.request_stop(e)
+
+        coord.request_stop()
+        coord.join(threads, stop_grace_period_secs=10)
+
+
+def evaluate(experiment, is_test=False):
+    """Eval CIFAR-10 for a number of steps."""
+    with tf.Graph().as_default() as g:
+        # Get images and labels for CIFAR-10.
+        eval_data = is_test
+        images, labels = cifar10.inputs(eval_data=eval_data)
+
+        # Build a Graph that computes the logits predictions from the
+        # inference model.
+        logits = cifar10.inference(images)
+
+        # Calculate predictions.
+        top_k_op = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, labels, 1), tf.float32))
+
+        # Restore the moving average version of the learned variables for eval.
+        variable_averages = tf.train.ExponentialMovingAverage(
+            cifar10.MOVING_AVERAGE_DECAY)
+        variables_to_restore = variable_averages.variables_to_restore()
+        saver = tf.train.Saver(variables_to_restore)
+
+        # Build the summary operation based on the TF collection of Summaries.
+        summary_op = tf.summary.merge_all()
+
+        summary_writer = tf.summary.FileWriter(FLAGS.eval_dir, g)
+
+        eval_once(saver, summary_writer, top_k_op, summary_op, labels, logits, experiment, is_test=is_test)
+        # if FLAGS.run_once:
+        #     break
+        # time.sleep(FLAGS.eval_interval_secs)
 
 
 def train():
     """Train CIFAR-10 for a number of steps."""
     with tf.Graph().as_default():
-
-        project = TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
         global_step = tf.contrib.framework.get_or_create_global_step()
 
@@ -113,6 +214,8 @@ def train():
                     print(format_str % (datetime.now(), self._step, loss_value,
                                         examples_per_sec, sec_per_batch))
 
+        strings = "airplane automobile bird cat deer dog frog horse ship truck"
+        mapping = {i: v for i, v in zip(range(10), strings.split())}
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=FLAGS.train_dir,
                 hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
@@ -120,26 +223,24 @@ def train():
                        _LoggerHook()],
                 config=tf.ConfigProto(
                     log_device_placement=FLAGS.log_device_placement)) as mon_sess:
-            with project.create_experiment(
+            with PROJECT.create_experiment(
                     display_name='Cifar10',
                     description='DNN',
                     optimizer=optimizer,
-                    monitored_metrics={'loss': loss}) as experiment:
+                    class_mapping=mapping
+                    ) as experiment:
                 for step in experiment.loop(condition=lambda i: not mon_sess.should_stop(),
                                             epoch_size=cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN):
-                    with experiment.train():
+                    with experiment.train(monitored_metrics={'loss': loss}):
                         mon_sess.run([train_op, loss])
-                    if step % 10 == 0:
-                        with experiment.validation():
-                            evaluate(test=False)
-                        with experiment.test():
-                            evaluate(test=True)
+                    if (step + 1) % 10 == 0:
+                        evaluate(experiment, is_test=False)
+                evaluate(experiment, is_test=True)
 
             # while not mon_sess.should_stop():
             #     mon_sess.run([train_op, loss])
 
 
-# Similar code found in 2 other locations  (mass = 60)  …
 def main(argv=None):  # pylint: disable=unused-argument
     cifar10.maybe_download_and_extract()
     if tf.gfile.Exists(FLAGS.train_dir):
