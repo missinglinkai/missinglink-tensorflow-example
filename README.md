@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ## Run
 
 In order to run an experiment with MissingLinkAI, you would need to first create a
-project and obtain the credentials on the MissingLinkAI's web dashbash.
+project and obtain the credentials on the MissingLinkAI's web dashboard.
 
 With the `owner_id` and `project_token`, you can run this example from terminal.
 ```bash
