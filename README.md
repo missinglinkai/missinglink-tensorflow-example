@@ -23,13 +23,13 @@ pip install -r requirements.txt
 
 ## Run
 
-In order to run an experiment with MissingLinkAI, you would need to first create a 
-project and obtain the credentials on the MissingLinkAI's web dashbash.
+In order to run an experiment with MissingLinkAI, you would need to first create a
+project and obtain the credentials on the MissingLinkAI's web dashboard.
 
 With the `owner_id` and `project_token`, you can run this example from terminal.
 ```bash
-python mnist.py --owner_id 'owner_id' --project_token 'project_token'
-python mnist_with_epoch_loop.py --owner_id 'owner_id' --project_token 'project_token'
+python mnist.py --owner-id 'owner_id' --project-token 'project_token'
+python mnist_with_epoch_loop.py --owner-id 'owner_id' --project-token 'project_token'
 ```
 
 Alternatively, you can copy these credentials and set them in source files.
