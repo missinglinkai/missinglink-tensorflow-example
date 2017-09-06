@@ -5,7 +5,7 @@
 You need Python 2.7 or 3.5 on your system to run this example.
 
 To install the dependency:
-- You are strongly recommended to use [`vertualenv`](https://virtualenv.pypa.io/en/stable/) to create a sandboxed environment for individual Python projects
+- You are strongly recommended to use [`virtualenv`](https://virtualenv.pypa.io/en/stable/) to create a sandboxed environment for individual Python projects
 ```bash
 pip install virtualenv
 ```
@@ -23,7 +23,7 @@ pip install -r requirements.txt
 
 ## Run
 
-In order to run an experiment with MissingLinkAI, you would need to first create a 
+In order to run an experiment with MissingLinkAI, you would need to first create a
 project and obtain the credentials on the MissingLinkAI's web dashbash.
 
 With the `owner_id` and `project_token`, you can run this example from terminal.
