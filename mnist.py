@@ -5,8 +5,6 @@
 # We will then integrate MissingLink SDK in order to remotely monitor our training, validation
 # and testing process.
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import math
 import argparse
@@ -127,16 +125,13 @@ def run_training():
         # Now that our neural net is ready, let's integrate MissingLinkAI SDK and start the training!
 
         # Create a project manager with credentials to communicate with MissingLinkAI's backend
-        project = TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
+        missinglink_project = TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
         # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
-        with project.create_experiment(
+        with missinglink_project.create_experiment(
                 display_name='MNIST multilayer perception',
-                description='Two fully connected hidden layers',
-                optimizer=optimizer,
-                hyperparams={'batch_size': BATCH_SIZE},
-                monitored_metrics={'loss': loss, 'acc': eval_correct}) as experiment:
+                description='Two fully connected hidden layers') as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
@@ -145,7 +140,8 @@ def run_training():
             #   besides the default metric-vs-iteration graphs.
             for step in experiment.loop(max_iterations=MAX_STEPS, epoch_size=EPOCH_SIZE):
 
-                feed_dict = fill_feed_dict(data_sets.train, images_placeholder, labels_placeholder)
+                feed_dict = fill_feed_dict(data_sets.train,
+                                           images_placeholder, labels_placeholder)
 
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
@@ -157,11 +153,13 @@ def run_training():
                 # Validate the model with the validation dataset
                 if (step + 1) % EPOCH_SIZE == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation():
-                        do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+                        do_eval(session, eval_correct, images_placeholder,
+                                labels_placeholder, data_sets.validation)
             total_test_iterations = data_sets.test.num_examples // BATCH_SIZE
             with experiment.test(total_test_iterations, labels_placeholder, logits):
-                do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
-                    
+                do_eval(session, eval_correct, images_placeholder,
+                        labels_placeholder, data_sets.test)
+
 
 if __name__ == '__main__':
     # Provide an alternative to provide MissingLinkAI credential

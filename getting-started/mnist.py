@@ -5,8 +5,6 @@
 # We will then integrate MissingLink SDK in order to remotely monitor our training, validation
 # and testing process.
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import math
 import argparse
@@ -128,7 +126,7 @@ def run_training():
                 print('Step %d: loss = %.2f' % (step, loss_value))
                 print('Running on validation dataset...')
                 do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
-                    
+
 
 if __name__ == '__main__':
     run_training()

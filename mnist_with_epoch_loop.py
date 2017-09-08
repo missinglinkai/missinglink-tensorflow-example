@@ -5,8 +5,6 @@
 # We will then integrate MissingLink SDK in order to remotely monitor our training, validation
 # and testing process.
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import math
 import argparse
@@ -127,17 +125,15 @@ def run_training():
         # Now that our neural net is ready, let's integrate MissingLink SDK and start the training!
 
         # Create a callback with credentials to communicate with MissingLink's backend
-        project = TensorFlowProject(owner_id=OWNER_ID, project_token=PROJECT_TOKEN, host=HOST)
+        missinglink_project = TensorFlowProject(owner_id=OWNER_ID, project_token=PROJECT_TOKEN, host=HOST)
 
         mapping = {i: str(i) for i in range(10)}
-        project.set_properties(class_mapping=mapping)
+        missinglink_project.set_properties(class_mapping=mapping)
         # Create an experiment as a context manager so MissingLink can monitor the
         # progress of the experiment.
         with project.create_experiment(
                 display_name='MNIST multilayer perception',
-                description='Two fully connected hidden layers',
-                optimizer=optimizer,
-                monitored_metrics={'loss': loss, 'acc': eval_correct}) as experiment:
+                description='Two fully connected hidden layers') as experiment:
 
             total_batches = int(data_sets.train.num_examples / BATCH_SIZE)
 
@@ -147,7 +143,8 @@ def run_training():
             for epoch in experiment.epoch_loop(EPOCHS):
                 for batch in experiment.batch_loop(total_batches):
 
-                    feed_dict = fill_feed_dict(data_sets.train, images_placeholder, labels_placeholder)
+                    feed_dict = fill_feed_dict(data_sets.train,
+                                               images_placeholder, labels_placeholder)
 
                     # Use `experiment.train` scope before the `session.run` which runs the optimizer
                     # to let the SDK know it should collect the metrics as training metrics.
@@ -159,10 +156,12 @@ def run_training():
 
                 # Validate the model with the validation dataset
                 with experiment.validation():
-                    do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+                    do_eval(session, eval_correct, images_placeholder,
+                            labels_placeholder, data_sets.validation)
             total_test_iterations = data_sets.test.num_examples // BATCH_SIZE
             with experiment.test(total_test_iterations, labels_placeholder, logits):
-                do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.test)
+                do_eval(session, eval_correct, images_placeholder,
+                        labels_placeholder, data_sets.test)
 
 
 if __name__ == '__main__':

@@ -5,8 +5,6 @@
 # We will then integrate MissingLink SDK in order to remotely monitor our training, validation
 # and testing process.
 
-from __future__ import absolute_import, division, print_function
-
 import os
 import math
 import argparse
@@ -127,7 +125,7 @@ def run_training():
         # Now that our neural net is ready, let's integrate MissingLinkAI SDK and start the training!
 
         # Create a project manager with credentials to communicate with MissingLinkAI's backend
-        project = missinglink.TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
+        missinglink_project = missinglink.TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
         mnist_class_mapping = {
             0: 'zero',
@@ -144,31 +142,33 @@ def run_training():
 
         # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
-        with project.create_experiment(
+        with missinglink_project.create_experiment(
                 display_name='My MNIST multilayer perception',
                 description='64 hidden units for layer 2',
-                class_mapping=mnist_class_mapping,
-                optimizer=optimizer,
-                hyperparams={'batch_size': BATCH_SIZE}) as experiment:
+                class_mapping=mnist_class_mapping) as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
             # - The index `step`, produced by `experiment.loop`, is 0-based.
             for step in experiment.loop(max_iterations=MAX_STEPS):
 
-                feed_dict = fill_feed_dict(data_sets.train, images_placeholder, labels_placeholder)
+                feed_dict = fill_feed_dict(data_sets.train,
+                                           images_placeholder, labels_placeholder)
 
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
-                with experiment.train(monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                with experiment.train(
+                    monitored_metrics={'loss': loss, 'acc': eval_correct}):
                     # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
                     # tensors provided in the `experiment.train` context (and `experiment` context).
                     _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
 
                 # Validate the model with the validation dataset
                 if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
-                    with experiment.validation(monitored_metrics={'loss': loss, 'acc': eval_correct}):
-                        do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+                    with experiment.validation(
+                        monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                        do_eval(session, eval_correct, images_placeholder,
+                                labels_placeholder, data_sets.validation)
 
 
 if __name__ == '__main__':
