@@ -12,6 +12,8 @@ import argparse
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
+import missinglink
+
 # Input params
 NUM_CLASSES = 10  # The MNIST dataset has 10 classes, representing the digits 0 through 9.
 IMAGE_SIZE = 28  # The MNIST images are always 28x28 pixels.
@@ -22,12 +24,17 @@ HIDDEN1_UNITS = 128
 HIDDEN2_UNITS = 32
 
 # Training params
-LEARNING_RATE = 0.01
+# LEARNING_RATE = 0.01
+LEARNING_RATE = 0.02
 MAX_STEPS = 2000
 BATCH_SIZE = 100
 
 # Directory for saving input
 INPUT_DATA_DIR = os.path.join(os.getenv('TEST_TMPDIR', '/tmp'), 'tensorflow/mnist/input_data')
+
+# MissingLink credential
+OWNER_ID = "Fill in your owner id"
+PROJECT_TOKEN = "Fill in your project token"
 
 
 def inference(images, hidden1_units, hidden2_units):
@@ -80,7 +87,7 @@ def do_eval(sess, eval_correct, images_placeholder, labels_placeholder, data_set
         feed_dict = fill_feed_dict(data_set, images_placeholder, labels_placeholder)
         true_count += sess.run(eval_correct, feed_dict=feed_dict)
     precision = float(true_count) / num_examples
-    print('  Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' % (num_examples, true_count, precision))
+    print('Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' % (num_examples, true_count, precision))
     return precision
 
 
@@ -115,18 +122,51 @@ def run_training():
         session = tf.Session()
         session.run(init)
 
-        # Start the training loop
-        for step in range(MAX_STEPS):
-            feed_dict = fill_feed_dict(data_sets.train, images_placeholder, labels_placeholder)
+        # Now that our neural net is ready, let's integrate MissingLinkAI SDK and start the training!
 
-            _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
+        # Create a project manager with credentials to communicate with MissingLinkAI's backend
+        missinglink_project = missinglink.TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
-            # Validate the model with the validation dataset
-            if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
-                print('Step %d: loss = %.2f' % (step, loss_value))
-                print('Running on validation dataset...')
-                do_eval(session, eval_correct, images_placeholder, labels_placeholder, data_sets.validation)
+        # Create an experiment as a context manager so MissingLinkAI can monitor the
+        # progress of the experiment.
+        with missinglink_project.create_experiment(
+            display_name='MNIST multilayer perception',
+            description='Two fully connected hidden layers',
+            hyperparams={'learning_rate': LEARNING_RATE}) as experiment:
+
+            # Use `experiment.loop` generator to manage the training loop.
+            # - The loop runs for `max_iterations` number of times.
+            # - The index `step`, produced by `experiment.loop`, is 0-based.
+            for step in experiment.loop(max_iterations=MAX_STEPS):
+
+                feed_dict = fill_feed_dict(data_sets.train,
+                                           images_placeholder, labels_placeholder)
+
+                # Use `experiment.train` scope before the `session.run` which runs the optimizer
+                # to let the SDK know it should collect the metrics as training metrics.
+                with experiment.train(
+                    monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                    # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
+                    # tensors provided in the `experiment.train` context (and `experiment` context).
+                    _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
+
+                # Validate the model with the validation dataset
+                if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
+                    with experiment.validation(
+                        monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                        do_eval(session, eval_correct, images_placeholder,
+                                labels_placeholder, data_sets.validation)
 
 
 if __name__ == '__main__':
+    # Provide an alternative to provide MissingLinkAI credential
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--owner-id')
+    parser.add_argument('--project-token')
+
+    # Override credential values if provided as arguments
+    args = parser.parse_args()
+    OWNER_ID = args.owner_id or OWNER_ID
+    PROJECT_TOKEN = args.project_token or PROJECT_TOKEN
+
     run_training()
