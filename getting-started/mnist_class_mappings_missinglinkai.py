@@ -21,8 +21,7 @@ IMAGE_PIXELS = IMAGE_SIZE * IMAGE_SIZE
 
 # Network params
 HIDDEN1_UNITS = 128
-# HIDDEN2_UNITS = 32
-HIDDEN2_UNITS = 64
+HIDDEN2_UNITS = 32
 
 # Training params
 LEARNING_RATE = 0.01
@@ -87,7 +86,7 @@ def do_eval(sess, eval_correct, images_placeholder, labels_placeholder, data_set
         feed_dict = fill_feed_dict(data_set, images_placeholder, labels_placeholder)
         true_count += sess.run(eval_correct, feed_dict=feed_dict)
     precision = float(true_count) / num_examples
-    print('  Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' % (num_examples, true_count, precision))
+    print('Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' % (num_examples, true_count, precision))
     return precision
 
 
@@ -127,25 +126,11 @@ def run_training():
         # Create a project manager with credentials to communicate with MissingLinkAI's backend
         missinglink_project = missinglink.TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
-        mnist_class_mapping = {
-            0: 'zero',
-            1: 'one',
-            2: 'two',
-            3: 'three',
-            4: 'four',
-            5: 'five',
-            6: 'six',
-            7: 'seven',
-            8: 'eight',
-            9: 'nine',
-        }
-
         # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
         with missinglink_project.create_experiment(
-                display_name='My MNIST multilayer perception',
-                description='64 hidden units for layer 2',
-                class_mapping=mnist_class_mapping) as experiment:
+                display_name='MNIST multilayer perception',
+                description='Two fully connected hidden layers') as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
