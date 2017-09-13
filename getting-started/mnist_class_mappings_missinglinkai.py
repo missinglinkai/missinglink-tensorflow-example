@@ -126,6 +126,19 @@ def run_training():
         # Create a project manager with credentials to communicate with MissingLinkAI's backend
         missinglink_project = missinglink.TensorFlowProject(OWNER_ID, PROJECT_TOKEN)
 
+        mnist_class_mapping = {
+            0: 'zero',
+            1: 'one',
+            2: 'two',
+            3: 'three',
+            4: 'four',
+            5: 'five',
+            6: 'six',
+            7: 'seven',
+            8: 'eight',
+            9: 'nine',
+        }
+
         # Create an experiment as a context manager so MissingLinkAI can monitor the
         # progress of the experiment.
         with missinglink_project.create_experiment(
