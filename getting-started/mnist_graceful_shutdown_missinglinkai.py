@@ -123,8 +123,18 @@ def run_training():
 
         # Now that our neural net is ready, let's integrate MissingLinkAI SDK and start the training!
 
+        def start_new_experiment():
+            # Write code here that starts a new experiment
+            pass
+
+        def log_experiment_to_internal_log():
+            # Write code here that logs important information
+            # to your internal logs
+            pass
+
         def stopped_callback():
-            print('Experiment stopped from the web')
+            start_new_experiment()
+            log_experiment_to_internal_log()
 
         # Create a project manager with credentials to communicate with MissingLinkAI's backend
         missinglink_project = missinglink.TensorFlowProject(
