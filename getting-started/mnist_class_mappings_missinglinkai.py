@@ -143,7 +143,8 @@ def run_training():
         # progress of the experiment.
         with missinglink_project.create_experiment(
                 display_name='MNIST multilayer perception',
-                description='Two fully connected hidden layers') as experiment:
+                description='Two fully connected hidden layers',
+                class_mappings=mnist_class_mappings) as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
