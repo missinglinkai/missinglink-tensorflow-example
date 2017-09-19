@@ -143,18 +143,20 @@ def run_training():
                 from datetime import datetime
 
                 time_before_experiment = datetime.utcnow()
-                kwh_cost = 0.25  # A very expensive electrical rate in USD
-                gpu_wattage_kW = 16  # 64 typical modern single GPU unit each ~ 0.25 kW
+                no_teraflops = 128  # 64 typical modern single GPU unit each ~ 2 teraflops/s
 
-                def cost_of_running_experiment():
-                    time_elapsed_hours = \
-                        (datetime.utcnow() - time_before_experiment).total_seconds() / 3600
-                    return K.variable(gpu_wattage_kW * time_elapsed_hours * kwh_cost)
+                def total_gpu_teraflops():
+                    time_elapsed_seconds = \
+                        datetime.utcnow() - time_before_experiment).total_seconds()
+                    return K.variable(no_teraflops * time_elapsed_hours)
+
+                solver.solve()
 
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
                 with experiment.train(
-                    monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                    monitored_metrics={'loss': loss, 'acc': eval_correct,
+                        'total_gpu_teraflops': total_gpu_teraflops}):
                     # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
                     # tensors provided in the `experiment.train` context (and `experiment` context).
                     _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
@@ -162,7 +164,8 @@ def run_training():
                 # Validate the model with the validation dataset
                 if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation(
-                        monitored_metrics={'loss': loss, 'acc': eval_correct}):
+                        monitored_metrics={'loss': loss, 'acc': eval_correct,
+                            'total_gpu_teraflops': total_gpu_teraflops}):
                         do_eval(session, eval_correct, images_placeholder,
                                 labels_placeholder, data_sets.validation)
 
