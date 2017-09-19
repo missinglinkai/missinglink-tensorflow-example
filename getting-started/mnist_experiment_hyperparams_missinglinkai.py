@@ -157,6 +157,14 @@ def run_training():
                         do_eval(session, eval_correct, images_placeholder,
                                 labels_placeholder, data_sets.validation)
 
+            # Use `experiment.test` generator to manage the testing loop.
+            total_test_iterations = data_set.num_examples
+
+            with experiment.test(
+                total_test_iterations,
+                expected=labels_placeholder,
+                predicted=logits):
+                sess.run([train_op, loss], feed_dict=feed_dict)
 
 if __name__ == '__main__':
     # Provide an alternative to provide MissingLinkAI credential

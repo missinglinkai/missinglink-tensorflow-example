@@ -163,7 +163,6 @@ def run_training():
                 predicted=logits):
                 sess.run([train_op, loss], feed_dict=feed_dict)
 
-
 if __name__ == '__main__':
     # Provide an alternative to provide MissingLinkAI credential
     parser = argparse.ArgumentParser()
