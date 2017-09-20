@@ -140,23 +140,18 @@ def run_training():
                 feed_dict = fill_feed_dict(data_sets.train,
                                            images_placeholder, labels_placeholder)
 
-                from datetime import datetime
-
-                time_before_experiment = datetime.utcnow()
-                no_teraflops = 128  # 64 typical modern single GPU unit each ~ 2 teraflops/s
-
-                def total_gpu_teraflops():
-                    time_elapsed_seconds = \
-                        datetime.utcnow() - time_before_experiment).total_seconds()
-                    return K.variable(no_teraflops * time_elapsed_hours)
-
-                solver.solve()
+                def sorensen_dice():
+                    # Here we can modify this function to
+                    # calculate the sorensen dice coefficient
+                    # or any other custom metrics
+                    # instead of returning 1
+                    return 1
 
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
                 with experiment.train(
                     monitored_metrics={'loss': loss, 'acc': eval_correct,
-                        'total_gpu_teraflops': total_gpu_teraflops}):
+                        'sorensen_dice': sorensen_dice}):
                     # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
                     # tensors provided in the `experiment.train` context (and `experiment` context).
                     _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
@@ -165,7 +160,7 @@ def run_training():
                 if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation(
                         monitored_metrics={'loss': loss, 'acc': eval_correct,
-                            'total_gpu_teraflops': total_gpu_teraflops}):
+                            'sorensen_dice': sorensen_dice}):
                         do_eval(session, eval_correct, images_placeholder,
                                 labels_placeholder, data_sets.validation)
 

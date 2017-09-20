@@ -24,7 +24,7 @@ HIDDEN1_UNITS = 128
 HIDDEN2_UNITS = 32
 
 # Training params
-# LEARNING_RATE = 0.01
+DROPOUT_RATE = 0.1
 LEARNING_RATE = 0.02
 MAX_STEPS = 2000
 BATCH_SIZE = 100
@@ -132,7 +132,7 @@ def run_training():
         with missinglink_project.create_experiment(
             display_name='MNIST multilayer perception',
             description='Two fully connected hidden layers',
-            hyperparams={'learning_rate': LEARNING_RATE}) as experiment:
+            hyperparams={'dropout_rate': DROPOUT_RATE}) as experiment:
 
             # Use `experiment.loop` generator to manage the training loop.
             # - The loop runs for `max_iterations` number of times.
