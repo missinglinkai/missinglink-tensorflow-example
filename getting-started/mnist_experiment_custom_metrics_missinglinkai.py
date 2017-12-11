@@ -150,8 +150,9 @@ def run_training():
                 # Use `experiment.train` scope before the `session.run` which runs the optimizer
                 # to let the SDK know it should collect the metrics as training metrics.
                 with experiment.train(
-                    monitored_metrics={'loss': loss, 'acc': eval_correct,
-                        'sorensen_dice': sorensen_dice}):
+                        monitored_metrics={'loss': loss, 'acc': eval_correct},
+                        custom_metrics={'sorensen_dice': sorensen_dice}
+                ):
                     # Note that you only need to provide the optimizer op. The SDK will automatically run the metric
                     # tensors provided in the `experiment.train` context (and `experiment` context).
                     _, loss_value = session.run([train_op, loss], feed_dict=feed_dict)
@@ -159,19 +160,21 @@ def run_training():
                 # Validate the model with the validation dataset
                 if (step + 1) % 500 == 0 or (step + 1) == MAX_STEPS:
                     with experiment.validation(
-                        monitored_metrics={'loss': loss, 'acc': eval_correct,
-                            'sorensen_dice': sorensen_dice}):
+                        monitored_metrics={'loss': loss, 'acc': eval_correct},
+                        custom_metrics={'sorensen_dice': sorensen_dice}
+                    ):
                         do_eval(session, eval_correct, images_placeholder,
                                 labels_placeholder, data_sets.validation)
 
             # Use `experiment.test` generator to manage the testing loop.
-            total_test_iterations = data_set.num_examples
+            total_test_iterations = data_sets.test.num_examples
 
             with experiment.test(
                 total_test_iterations,
                 expected=labels_placeholder,
-                predicted=logits):
-                sess.run([train_op, loss], feed_dict=feed_dict)
+                predicted=logits
+            ):
+                session.run([train_op, loss], feed_dict=feed_dict)
 
 if __name__ == '__main__':
     # Provide an alternative to provide MissingLinkAI credential
